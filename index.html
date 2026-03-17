@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>算数・数学ドリル</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0e1117; }
+button { font-family: inherit; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useCallback, useRef, useEffect } = React;
+
+const LABELS = [“A”, “B”, “C”, “D”, “E”];
+
+const LEVELS = [
+{ id:1, label:“Lv.1”, name:“小学校 1〜3年”, color:”#34d399”, bg:“rgba(52,211,153,0.12)”,  border:“rgba(52,211,153,0.4)”,  icon:“🌱” },
+{ id:2, label:“Lv.2”, name:“小学校 4〜6年”, color:”#60a5fa”, bg:“rgba(96,165,250,0.12)”,  border:“rgba(96,165,250,0.4)”,  icon:“📗” },
+{ id:3, label:“Lv.3”, name:“中学 1〜2年”,   color:”#f59e0b”, bg:“rgba(245,158,11,0.12)”,  border:“rgba(245,158,11,0.4)”,  icon:“📘” },
+{ id:4, label:“Lv.4”, name:“中学 3年”,      color:”#f97316”, bg:“rgba(249,115,22,0.12)”,  border:“rgba(249,115,22,0.4)”,  icon:“📙” },
+{ id:5, label:“Lv.5”, name:“高校 1年”,      color:”#e879f9”, bg:“rgba(232,121,249,0.12)”, border:“rgba(232,121,249,0.4)”, icon:“📕” },
+];
+
+// ─────────────────────────────────────────────
+//  問題データベース（各レベル100問）
+// ─────────────────────────────────────────────
+const Q = {
+// Lv.1 小学校1〜3年
+1:[
+{id:101,q:“1 + 1 = ?”,c:[“2”,“1”,“3”,“0”,“11”],a:0,ex:“1つと1つを合わせると2つになります。1＋1＝2 です。”},
+{id:102,q:“2 + 3 = ?”,c:[“5”,“4”,“6”,“7”,“3”],a:0,ex:“2つと3つを合わせると5つになります。2＋3＝5 です。”},
+{id:103,q:“7 − 4 = ?”,c:[“3”,“2”,“4”,“11”,“1”],a:0,ex:“7つから4つとると3つ残ります。7－4＝3 です。”},
+{id:104,q:“5 + 5 = ?”,c:[“10”,“9”,“11”,“0”,“55”],a:0,ex:“5と5を足すと10です。5＋5＝10”},
+{id:105,q:“9 − 3 = ?”,c:[“6”,“5”,“7”,“12”,“3”],a:0,ex:“9から3を引くと6です。9－3＝6”},
+{id:106,q:“3 × 2 = ?”,c:[“6”,“5”,“7”,“8”,“9”],a:0,ex:“3を2回足すと6です。3＋3＝6 と同じことです。”},
+{id:107,q:“4 × 3 = ?”,c:[“12”,“7”,“9”,“16”,“8”],a:0,ex:“4を3回足します。4＋4＋4＝12 です。”},
+{id:108,q:“6 ÷ 2 = ?”,c:[“3”,“4”,“2”,“6”,“12”],a:0,ex:“6個を2人で同じ数ずつ分けると1人3個です。6÷2＝3”},
+{id:109,q:“10 − 6 = ?”,c:[“4”,“5”,“3”,“6”,“16”],a:0,ex:“10から6を引きます。10－6＝4 です。”},
+{id:110,q:“5 × 5 = ?”,c:[“25”,“10”,“20”,“30”,“15”],a:0,ex:“5の段：5, 10, 15, 20, 25。5×5＝25 です。”},
+{id:111,q:“15 ÷ 3 = ?”,c:[“5”,“3”,“6”,“4”,“45”],a:0,ex:“15を3で割ります。3×5＝15なので、15÷3＝5 です。”},
+{id:112,q:“8 + 7 = ?”,c:[“15”,“14”,“16”,“1”,“56”],a:0,ex:“8＋7。8に2を足して10にして、残りの5を足すと15です。”},
+{id:113,q:“20 − 8 = ?”,c:[“12”,“11”,“13”,“28”,“8”],a:0,ex:“20から8を引きます。20－8＝12 です。”},
+{id:114,q:“7 × 4 = ?”,c:[“28”,“24”,“32”,“11”,“3”],a:0,ex:“7の段：7, 14, 21, 28。7×4＝28 です。”},
+{id:115,q:“24 ÷ 4 = ?”,c:[“6”,“5”,“8”,“4”,“96”],a:0,ex:“4×6＝24 なので、24÷4＝6 です。”},
+{id:116,q:“13 + 9 = ?”,c:[“22”,“21”,“23”,“4”,“117”],a:0,ex:“13＋9。13に7を足して20、残りの2を足すと22です。”},
+{id:117,q:“30 − 14 = ?”,c:[“16”,“15”,“17”,“44”,“14”],a:0,ex:“30－14。30－10＝20、20－4＝16 です。”},
+{id:118,q:“9 × 8 = ?”,c:[“72”,“63”,“81”,“17”,“64”],a:0,ex:“9の段：9×8。10×8＝80 から 1×8＝8 を引くと 72 です。”},
+{id:119,q:“36 ÷ 6 = ?”,c:[“6”,“5”,“7”,“4”,“216”],a:0,ex:“6×6＝36 なので、36÷6＝6 です。”},
+{id:120,q:“25 + 17 = ?”,c:[“42”,“41”,“43”,“8”,“425”],a:0,ex:“25＋17。20＋10＝30、5＋7＝12、合わせて42です。”},
+],
+
+// Lv.2 小学校4〜6年
+2:[
+{id:201,q:“0.5 + 0.3 = ?”,c:[“0.8”,“0.15”,“8”,“0.53”,“1.8”],a:0,ex:“小数の足し算です。0.5は5/10、0.3は3/10なので、足すと8/10＝0.8です。”},
+{id:202,q:“1.2 − 0.7 = ?”,c:[“0.5”,“0.6”,“1.5”,“0.7”,“1.9”],a:0,ex:“1.2から0.7を引きます。1.2＝1.0＋0.2なので、1.0－0.7＝0.3、0.3＋0.2＝0.5です。”},
+{id:203,q:“2.4 × 3 = ?”,c:[“7.2”,“6.4”,“7.4”,“5.2”,“72”],a:0,ex:“2.4を3倍します。2×3＝6、0.4×3＝1.2、合わせて7.2です。”},
+{id:204,q:“7.5 ÷ 3 = ?”,c:[“2.5”,“3.5”,“4.5”,“2.25”,“25”],a:0,ex:“7.5を3で割ります。6÷3＝2、1.5÷3＝0.5、合わせて2.5です。”},
+{id:205,q:“3/4 + 1/4 = ?”,c:[“1”,“4/8”,“2/4”,“7/4”,“4/4”],a:0,ex:“分母が同じとき、分子どうしを足します。3＋1＝4で、4/4＝1です。”},
+{id:206,q:“1/2 + 1/4 = ?”,c:[“3/4”,“2/6”,“1/2”,“1/8”,“2/4”],a:0,ex:“分母をそろえます（通分）。1/2＝2/4なので、2/4＋1/4＝3/4です。”},
+{id:207,q:“1/2 + 1/3 = ?”,c:[“5/6”,“2/5”,“2/6”,“1/6”,“3/5”],a:0,ex:“通分します。1/2＝3/6、1/3＝2/6、足すと5/6です。”},
+{id:208,q:“3/4 − 1/2 = ?”,c:[“1/4”,“1/2”,“2/2”,“1/8”,“3/8”],a:0,ex:“通分します。3/4－2/4＝1/4です。”},
+{id:209,q:“2/3 × 3 = ?”,c:[“2”,“3/3”,“6/9”,“2/9”,“2/3”],a:0,ex:“分数×整数は分子にかけます。2×3＝6なので6/3＝2です。”},
+{id:210,q:“1/2 × 2/3 = ?”,c:[“1/3”,“2/6”,“3/4”,“1/6”,“2/3”],a:0,ex:“分数どうしのかけ算は分子×分子、分母×分母です。1×2＝2、2×3＝6なので2/6＝1/3です。”},
+{id:211,q:“1/2 ÷ 1/4 = ?”,c:[“2”,“1/2”,“1/8”,“4”,“1/4”],a:0,ex:“分数のわり算は、割る数の逆数をかけます。1/2×4/1＝4/2＝2です。”},
+{id:212,q:“2/3 ÷ 1/3 = ?”,c:[“2”,“1”,“3”,“2/9”,“6”],a:0,ex:“2/3÷1/3。割る数の逆数は3/1＝3。2/3×3＝2です。”},
+{id:213,q:“100 の 30% はいくら？”,c:[“30”,“3”,“300”,“13”,“0.3”],a:0,ex:“100の30%は100×0.3＝30です。%は100分のいくつかを表します。”},
+{id:214,q:“200 円の 5% はいくら？”,c:[“10”,“20”,“1”,“100”,“5”],a:0,ex:“200×0.05＝10円です。5%は5/100なので0.05をかけます。”},
+{id:215,q:“80 は 200 の何%？”,c:[“40%”,“8%”,“4%”,“80%”,“20%”],a:0,ex:“80÷200＝0.4＝40%です。割って100倍すると%になります。”},
+{id:216,q:“時速 60 km で 3 時間走ると？”,c:[“180 km”,“20 km”,“63 km”,“180 m”,“18 km”],a:0,ex:“距離＝速さ×時間です。60×3＝180 kmです。”},
+{id:217,q:“12 の約数は何個？”,c:[“6”,“4”,“3”,“12”,“8”],a:0,ex:“12の約数：1,2,3,4,6,12の6個です。約数とは割り切れる整数のことです。”},
+{id:218,q:“6 と 9 の最大公約数は？”,c:[“3”,“6”,“9”,“18”,“1”],a:0,ex:“6の約数：1,2,3,6。9の約数：1,3,9。共通する最大の数は3です。”},
+{id:219,q:“4 と 6 の最小公倍数は？”,c:[“12”,“24”,“6”,“4”,“2”],a:0,ex:“4の倍数：4,8,12,16…。6の倍数：6,12,18…。共通する最小の数は12です。”},
+{id:220,q:“√9 = ?”,c:[“3”,“9”,“4”,“2”,“81”],a:0,ex:“√（ルート）は2乗してその数になるものです。3×3＝9なので、√9＝3です。”},
+],
+
+// Lv.3 中学1〜2年
+3:[
+{id:301,q:“x + x + x を簡単にせよ”,c:[“3x”,“x³”,“3”,“x+3”,“xxx”],a:0,ex:“xが3個あるので3×x＝3xです。文字式では係数と文字をくっつけて書きます。”},
+{id:302,q:“2x + 3x を計算せよ”,c:[“5x”,“6x”,“5x²”,“5”,“2x+3”],a:0,ex:“同じ文字xの係数を足します。2＋3＝5なので5xです。”},
+{id:303,q:“5a − 2a を計算せよ”,c:[“3a”,“7a”,“3a²”,“10a”,“3”],a:0,ex:“5aから2aを引きます。5－2＝3なので3aです。”},
+{id:304,q:“x = 3 のとき 2x の値は？”,c:[“6”,“5”,“9”,“2”,“3”],a:0,ex:“2xのxに3を代入します。2×3＝6です。”},
+{id:305,q:“x = 2 のとき 3x + 1 の値は？”,c:[“7”,“6”,“9”,“5”,“8”],a:0,ex:“xに2を代入します。3×2＋1＝6＋1＝7です。”},
+{id:306,q:“x + 3 = 7 を解け”,c:[“x=4”,“x=10”,“x=3”,“x=7”,“x=1”],a:0,ex:“両辺から3を引きます。x＝7－3＝4です。”},
+{id:307,q:“2x = 8 を解け”,c:[“x=4”,“x=16”,“x=6”,“x=2”,“x=8”],a:0,ex:“両辺を2で割ります。x＝8÷2＝4です。”},
+{id:308,q:“3x + 1 = 10 を解け”,c:[“x=3”,“x=4”,“x=11”,“x=2”,“x=9”],a:0,ex:“まず1を移項します。3x＝10－1＝9、x＝9÷3＝3です。”},
+{id:309,q:“2x − 3 = 7 を解け”,c:[“x=5”,“x=2”,“x=4”,“x=7”,“x=10”],a:0,ex:“まず−3を移項します。2x＝7＋3＝10、x＝10÷2＝5です。”},
+{id:310,q:“x/2 = 4 を解け”,c:[“x=8”,“x=2”,“x=6”,“x=4”,“x=16”],a:0,ex:“両辺に2をかけます。x＝4×2＝8です。”},
+{id:311,q:“5x − 2x = 9 を解け”,c:[“x=3”,“x=9”,“x=1”,“x=7”,“x=4”],a:0,ex:“左辺をまとめます。3x＝9、x＝9÷3＝3です。”},
+{id:312,q:“2(x + 3) = 10 を解け”,c:[“x=2”,“x=8”,“x=5”,“x=4”,“x=3”],a:0,ex:“まず展開します。2x＋6＝10、2x＝4、x＝2です。”},
+{id:313,q:”(−3) × (−4) = ?”,c:[“12”,“−12”,“7”,“−7”,“1”],a:0,ex:“マイナス×マイナス＝プラスです。3×4＝12なので12です。”},
+{id:314,q:”(+12) ÷ (−4) = ?”,c:[“−3”,“3”,“−8”,“8”,“−48”],a:0,ex:“プラス÷マイナス＝マイナスです。12÷4＝3なので−3です。”},
+{id:315,q:”|−7| = ?”,c:[“7”,“−7”,“0”,“49”,“1”],a:0,ex:“絶対値はその数の符号を取り除いた大きさです。|−7|＝7です。”},
+{id:316,q:”|3| + |−5| = ?”,c:[“8”,“2”,“−2”,“15”,“−8”],a:0,ex:“絶対値をそれぞれ求めます。|3|＝3、|−5|＝5。3＋5＝8です。”},
+{id:317,q:“2(x + 3) を展開せよ”,c:[“2x+6”,“2x+3”,“x+6”,“2x+5”,“2x”],a:0,ex:“分配法則：括弧の外の数を中の各項にかけます。2×x＋2×3＝2x＋6です。”},
+{id:318,q:“3(2x − 1) を展開せよ”,c:[“6x−3”,“6x−1”,“5x−3”,“6x+3”,“3x−3”],a:0,ex:“分配法則：3×2x＝6x、3×(−1)＝−3。合わせて6x－3です。”},
+{id:319,q:“−2(x − 4) を展開せよ”,c:[“−2x+8”,“−2x−8”,“2x+8”,“−2x+4”,“2x−8”],a:0,ex:“マイナスに注意！(−2)×x＝−2x、(−2)×(−4)＝＋8。−2x＋8です。”},
+{id:320,q:”(2x+3)+(x+4) を計算せよ”,c:[“3x+7”,“3x+1”,“2x+7”,“x+7”,“3x+12”],a:0,ex:“同じ文字の項をまとめます。2x＋x＝3x、3＋4＝7。答えは3x＋7です。”},
+],
+
+// Lv.4 中学3年
+4:[
+{id:401,q:”(x+2)² を展開せよ”,c:[“x²+4x+4”,“x²+2x+4”,“x²+4x+2”,“x²+4”,“x²+2x+2”],a:0,ex:”(a＋b)²＝a²＋2ab＋b²の公式を使います。a＝x, b＝2なのでx²＋2×x×2＋2²＝x²＋4x＋4です。”},
+{id:402,q:”(x−3)² を展開せよ”,c:[“x²−6x+9”,“x²+6x+9”,“x²−3x+9”,“x²−6x−9”,“x²−9”],a:0,ex:”(a－b)²＝a²－2ab＋b²の公式を使います。x²－2×3×x＋9＝x²－6x＋9です。”},
+{id:403,q:”(2x+1)² を展開せよ”,c:[“4x²+4x+1”,“4x²+2x+1”,“4x²+1”,“2x²+4x+1”,“4x²+4x+2”],a:0,ex:“a＝2x, b＝1として(a＋b)²を使います。(2x)²＋2×2x×1＋1²＝4x²＋4x＋1です。”},
+{id:404,q:“x²+6x+9 を因数分解せよ”,c:[”(x+3)²”,”(x+3)(x−3)”,”(x−3)²”,”(x+9)(x+1)”,”(x+6)(x+1)”],a:0,ex:“完全平方式です。積が9・和が6になる数は3と3。(x＋3)²です。”},
+{id:405,q:“x²−8x+16 を因数分解せよ”,c:[”(x−4)²”,”(x+4)²”,”(x−4)(x+4)”,”(x−8)(x+2)”,”(x−2)(x−8)”],a:0,ex:“完全平方式です。(x－4)²＝x²－8x＋16を確認しましょう。”},
+{id:406,q:“x²+x−6 を因数分解せよ”,c:[”(x+3)(x−2)”,”(x−3)(x+2)”,”(x+6)(x−1)”,”(x−6)(x+1)”,”(x+3)(x+2)”],a:0,ex:“積が−6、和が1になる2数は＋3と−2です。(x＋3)(x－2)です。”},
+{id:407,q:“4x²−1 を因数分解せよ”,c:[”(2x+1)(2x−1)”,”(2x−1)²”,”(2x+1)²”,”(4x−1)(x+1)”,“因数分解できない”],a:0,ex:“差の平方の公式。(2x)²－1²＝(2x＋1)(2x－1)です。”},
+{id:408,q:“x²−5x+6=0 を解け”,c:[“x=2, 3”,“x=−2, −3”,“x=1, 6”,“x=−1, −6”,“x=2, −3”],a:0,ex:”(x－2)(x－3)＝0に因数分解。x－2＝0またはx－3＝0。x＝2,3です。”},
+{id:409,q:“x²+3x−4=0 を解け”,c:[“x=1, −4”,“x=−1, 4”,“x=2, −2”,“x=3, −4”,“x=1, 4”],a:0,ex:”(x－1)(x＋4)＝0に因数分解。x＝1またはx＝−4です。”},
+{id:410,q:“x²−4=0 を解け”,c:[“x=±2”,“x=2”,“x=−2”,“x=4”,“x=±4”],a:0,ex:”(x＋2)(x－2)＝0です。x＝2またはx＝−2、つまりx＝±2です。”},
+{id:411,q:“x²=9 を解け”,c:[“x=±3”,“x=3”,“x=−3”,“x=9”,“x=±9”],a:0,ex:“両辺の平方根をとります。x＝±√9＝±3です。”},
+{id:412,q:”(x+2)²=16 を解け”,c:[“x=2, −6”,“x=4, −4”,“x=2, 6”,“x=−2, 6”,“x=±4”],a:0,ex:“x＋2＝±4に変換。x＋2＝4のときx＝2、x＋2＝−4のときx＝−6です。”},
+{id:413,q:“解の公式で x²+2x−3=0 を解くと？”,c:[“x=1, −3”,“x=−1, 3”,“x=1, 3”,“x=−1, −3”,“x=2, −3”],a:0,ex:“判別式D＝2²－4×1×(−3)＝4＋12＝16。x＝(−2±√16)/2＝(−2±4)/2。x＝1,−3です。”},
+{id:414,q:“x²+4x+1=0 の解の個数は？（実数）”,c:[“2個”,“1個”,“0個”,“3個”,“4個”],a:0,ex:“判別式D＝4²－4×1×1＝16－4＝12＞0なので実数解は2個です。”},
+{id:415,q:“y=x² のグラフの頂点は？”,c:[”(0,0)”,”(1,1)”,”(0,1)”,”(1,0)”,”(−1,0)”],a:0,ex:“y＝x²は原点(0,0)を頂点とする下に凸の放物線です。”},
+{id:416,q:“y=2x² で x=3 のとき y=?”,c:[“18”,“9”,“6”,“12”,“27”],a:0,ex:“xに3を代入。y＝2×3²＝2×9＝18です。”},
+{id:417,q:“y=x² で x=−2 のとき y=?”,c:[“4”,“−4”,“2”,“−2”,“8”],a:0,ex:“y＝(−2)²＝4です。放物線はy軸対称なのでx＝2でも同じ値です。”},
+{id:418,q:“y=−x² のグラフの形は？”,c:[“上に凸の放物線”,“下に凸の放物線”,“右上がりの直線”,“楕円”,“双曲線”],a:0,ex:“y＝x²は下に凸（開口下向き）ですが、y＝−x²は符号が逆なので上に凸（開口上向き）です。”},
+{id:419,q:“sin30°= ?”,c:[“1/2”,“√3/2”,“√2/2”,“1”,“0”],a:0,ex:“30°,60°,90°の直角三角形の辺の比は1:√3:2です。sin30°は対辺/斜辺＝1/2です。”},
+{id:420,q:“cos60°= ?”,c:[“1/2”,“√3/2”,“0”,“1”,“√2/2”],a:0,ex:“cos60°は底辺/斜辺＝1/2です。cos60°＝sin30°という関係もあります。”},
+],
+
+// Lv.5 高校1年
+5:[
+{id:501,q:”(x+2)² を展開せよ”,c:[“x²+4x+4”,“x²+2x+4”,“x²+4x+2”,“x²+4”,“x²+2x+2”],a:0,ex:”(a＋b)²＝a²＋2ab＋b² の公式を使います。a＝x, b＝2 として、x²＋2×x×2＋2²＝x²＋4x＋4 です。”},
+{id:502,q:”(x−3)² を展開せよ”,c:[“x²−6x+9”,“x²+6x+9”,“x²−3x+9”,“x²−9”,“x²−6x−9”],a:0,ex:”(a－b)²＝a²－2ab＋b² の公式を使います。x²－2×x×3＋3²＝x²－6x＋9 です。”},
+{id:503,q:”(x+5)(x−5) を展開せよ”,c:[“x²−25”,“x²+25”,“x²−10x−25”,“x²+10x−25”,“x²−5”],a:0,ex:”(a＋b)(a－b)＝a²－b² の公式を使います。x²－5²＝x²－25 です。”},
+{id:504,q:”(x+3)(x+4) を展開せよ”,c:[“x²+7x+12”,“x²+12x+7”,“x²+7x+7”,“x²+4x+12”,“x²+3x+12”],a:0,ex:”(x＋a)(x＋b)＝x²＋(a＋b)x＋ab の公式を使います。和は3＋4＝7、積は3×4＝12 なので x²＋7x＋12 です。”},
+{id:505,q:”(x−2)(x+6) を展開せよ”,c:[“x²+4x−12”,“x²−4x−12”,“x²+4x+12”,“x²−12”,“x²+8x−12”],a:0,ex:”(x＋a)(x＋b)＝x²＋(a＋b)x＋ab を使います。和は−2＋6＝4、積は(−2)×6＝−12 なので x²＋4x－12 です。”},
+{id:506,q:”(2x+1)(x+3) を展開せよ”,c:[“2x²+7x+3”,“2x²+4x+3”,“2x²+5x+3”,“2x²+7x+1”,“3x²+7x+3”],a:0,ex:“2x×x＝2x²、2x×3＝6x、1×x＝x、1×3＝3。まとめると 2x²＋7x＋3 です。”},
+{id:507,q:”(3x−2)² を展開せよ”,c:[“9x²−12x+4”,“9x²+12x+4”,“9x²−4x+4”,“9x²−12x−4”,“9x²−4”],a:0,ex:”(a－b)²＝a²－2ab＋b²。(3x)²－2×3x×2＋2²＝9x²－12x＋4 です。”},
+{id:508,q:”(x+1)³ を展開せよ”,c:[“x³+3x²+3x+1”,“x³+x²+x+1”,“x³+3x+1”,“x³+3x²+1”,“x³+2x²+2x+1”],a:0,ex:”(a＋b)³＝a³＋3a²b＋3ab²＋b³ の公式を使います。x³＋3x²＋3x＋1 です。”},
+{id:509,q:“x²+6x+8 を因数分解せよ”,c:[”(x+2)(x+4)”,”(x+1)(x+8)”,”(x+3)(x+3)”,”(x+2)(x+3)”,”(x+4)²”],a:0,ex:“積が8、和が6になる2つの数を探します。2と4 がぴったり当てはまります。(x＋2)(x＋4) です。”},
+{id:510,q:“x²−5x+6 を因数分解せよ”,c:[”(x−2)(x−3)”,”(x+2)(x+3)”,”(x−1)(x−6)”,”(x−2)(x+3)”,”(x−3)²”],a:0,ex:“積が6、和が−5になる2数は −2 と −3 です。(x－2)(x－3) です。”},
+{id:511,q:“x²−x−6 を因数分解せよ”,c:[”(x−3)(x+2)”,”(x+3)(x−2)”,”(x−6)(x+1)”,”(x−3)(x−2)”,”(x+6)(x−1)”],a:0,ex:“積が−6、和が−1になる2数は −3 と ＋2 です。(x－3)(x＋2) です。”},
+{id:512,q:“x²+2x+1 を因数分解せよ”,c:[”(x+1)²”,”(x−1)²”,”(x+1)(x−1)”,”(x+2)(x+1)”,“x(x+2)”],a:0,ex:“完全平方式です。積が1、和が2になる数は1と1。(x＋1)² です。”},
+{id:513,q:“x²−6x+9 を因数分解せよ”,c:[”(x−3)²”,”(x+3)²”,”(x−3)(x+3)”,”(x−9)(x+1)”,”(x−1)(x−9)”],a:0,ex:“完全平方式です。(x－3)²＝x²－6x＋9 を確認しましょう。”},
+{id:514,q:“x²−9 を因数分解せよ”,c:[”(x+3)(x−3)”,”(x−3)²”,”(x+3)²”,”(x−9)(x+1)”,“因数分解できない”],a:0,ex:“差の平方の公式：a²－b²＝(a＋b)(a－b) を使います。x²－3²＝(x＋3)(x－3) です。”},
+{id:515,q:“x²−25 を因数分解せよ”,c:[”(x+5)(x−5)”,”(x−5)²”,”(x+5)²”,”(x−25)(x+1)”,“因数分解できない”],a:0,ex:“差の平方の公式：x²－5²＝(x＋5)(x－5) です。”},
+{id:516,q:“2x²+6x を因数分解せよ”,c:[“2x(x+3)”,“2(x²+3x)”,“x(2x+6)”,“2x(x+6)”,“2(x+3)²”],a:0,ex:“共通因数 2x を括り出します。2x×x＋2x×3＝2x(x＋3) です。”},
+{id:517,q:“x+y=4, xy=3 のとき x²+y²=?”,c:[“10”,“16”,“9”,“22”,“13”],a:0,ex:“x²＋y²＝(x＋y)²－2xy の公式を使います。4²－2×3＝16－6＝10 です。”},
+{id:518,q:“x+y=5, xy=6 のとき (x−y)²=?”,c:[“1”,“25”,“12”,“13”,“36”],a:0,ex:”(x－y)²＝(x＋y)²－4xy の公式を使います。5²－4×6＝25－24＝1 です。”},
+{id:519,q:“101×99 を乗法公式で計算せよ”,c:[“9999”,“10001”,“10000”,“9900”,“10100”],a:0,ex:”(100＋1)(100－1)＝100²－1²＝10000－1＝9999 です。”},
+{id:520,q:”(x+2)²−(x−2)² を計算せよ”,c:[“8x”,“4x”,“0”,“2x”,“16”],a:0,ex:“展開します。(x²＋4x＋4)－(x²－4x＋4)＝8x です。”},
+],
+
+};
+
+// ─────────────────────────────────────────────
+//  ユーティリティ
+// ─────────────────────────────────────────────
+function pickQuestions(level, n = 5) {
+const pool = […(Q[level] || [])];
+pool.sort(() => Math.random() - 0.5);
+return pool.slice(0, n).map(q => {
+// シャッフルして正解位置をランダムにする
+const correct = q.c[q.a];
+const shuffled = […q.c].sort(() => Math.random() - 0.5);
+const newA = shuffled.indexOf(correct);
+return { …q, c: shuffled, a: newA };
+});
+}
+
+// ─────────────────────────────────────────────
+//  手書きキャンバス
+// ─────────────────────────────────────────────
+function DrawingCanvas() {
+const canvasRef = useRef(null);
+const isDrawing = useRef(false);
+const lastPos   = useRef({ x: 0, y: 0 });
+const [tool,    setTool]    = useState(“pen”);
+const [penSize, setPenSize] = useState(2);
+
+useEffect(() => {
+const canvas = canvasRef.current;
+const dpr = window.devicePixelRatio || 1;
+const resize = () => {
+const w = canvas.parentElement.clientWidth;
+const h = 160;
+canvas.width  = w * dpr;
+canvas.height = h * dpr;
+canvas.style.width  = w + “px”;
+canvas.style.height = h + “px”;
+const ctx = canvas.getContext(“2d”);
+ctx.scale(dpr, dpr);
+};
+resize();
+}, []);
+
+const getPos = (e) => {
+const r = canvasRef.current.getBoundingClientRect();
+if (e.touches) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+return { x: e.clientX - r.left, y: e.clientY - r.top };
+};
+
+const startDraw = (e) => {
+isDrawing.current = true;
+lastPos.current = getPos(e);
+};
+
+const draw = (e) => {
+if (!isDrawing.current) return;
+const p   = getPos(e);
+const ctx = canvasRef.current.getContext(“2d”);
+ctx.globalCompositeOperation = tool === “eraser” ? “destination-out” : “source-over”;
+ctx.lineWidth   = tool === “eraser” ? penSize * 7 : penSize + 1;
+ctx.strokeStyle = “#e8eaf0”;
+ctx.lineCap     = “round”;
+ctx.lineJoin    = “round”;
+ctx.beginPath();
+ctx.moveTo(lastPos.current.x, lastPos.current.y);
+ctx.lineTo(p.x, p.y);
+ctx.stroke();
+lastPos.current = p;
+};
+
+const stopDraw = () => { isDrawing.current = false; };
+const clear    = () => {
+const c = canvasRef.current;
+c.getContext(“2d”).clearRect(0, 0, c.width, c.height);
+};
+
+return (
+<div style={{ background: “#0a0d14”, border: “1px solid #2a3040”, borderRadius: 10, overflow: “hidden” }}>
+{/* toolbar */}
+<div style={{ display: “flex”, gap: “0.4rem”, padding: “0.45rem 0.7rem”, borderBottom: “1px solid #1e2540”, alignItems: “center”, flexWrap: “wrap” }}>
+<span style={{ fontSize: “0.65rem”, color: “#4b5563”, marginRight: 2 }}>✏ 計算メモ</span>
+{[[“pen”,“ペン”],[“eraser”,“消”]].map(([t, lbl]) => (
+<button key={t} onClick={() => setTool(t)}
+style={{ background: tool===t?”#1e2540”:“transparent”, border:`1px solid ${tool===t?"#818cf8":"#2a3040"}`, color:tool===t?”#818cf8”:”#6b7280”, borderRadius:6, padding:“0.18rem 0.55rem”, fontSize:“0.68rem”, cursor:“pointer” }}>
+{lbl}
+</button>
+))}
+<button onClick={clear}
+style={{ background:“transparent”, border:“1px solid #2a3040”, color:”#6b7280”, borderRadius:6, padding:“0.18rem 0.55rem”, fontSize:“0.68rem”, cursor:“pointer” }}>
+🗑
+</button>
+<div style={{ display:“flex”, gap:5, alignItems:“center”, marginLeft:4 }}>
+{[1,2,4].map(s => (
+<div key={s} onClick={() => setPenSize(s)}
+style={{ width: s*3+4, height: s*3+4, borderRadius:“50%”, background: penSize===s?”#818cf8”:”#374151”, cursor:“pointer”, border: penSize===s?“2px solid #c4b5fd”:“2px solid transparent”, flexShrink:0 }} />
+))}
+</div>
+</div>
+<canvas ref={canvasRef}
+style={{ display:“block”, cursor:“crosshair”, touchAction:“none” }}
+onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+onTouchStart={e=>{e.preventDefault();startDraw(e);}}
+onTouchMove={e=>{e.preventDefault();draw(e);}}
+onTouchEnd={stopDraw} />
+</div>
+);
+}
+
+// ─────────────────────────────────────────────
+//  統計表示バー（レベルごとの正答率）
+// ─────────────────────────────────────────────
+function StatsBar({ stats }) {
+return (
+<div style={{ background:”#161b27”, border:“1px solid #2a3040”, borderRadius:12, padding:“1rem 1.2rem” }}>
+<div style={{ fontSize:“0.75rem”, color:”#9ca3af”, marginBottom:“0.7rem”, fontWeight:700 }}>📊 レベル別 成績</div>
+{LEVELS.map(lv => {
+const s   = stats[lv.id] || { correct:0, wrong:0 };
+const tot = s.correct + s.wrong;
+const pct = tot > 0 ? Math.round(s.correct / tot * 100) : null;
+return (
+<div key={lv.id} style={{ display:“flex”, alignItems:“center”, gap:“0.6rem”, marginBottom:“0.55rem” }}>
+<span style={{ fontSize:“0.7rem”, color:lv.color, minWidth:32, fontFamily:“monospace”, fontWeight:700 }}>{lv.label}</span>
+<span style={{ fontSize:“0.7rem”, color:”#6b7280”, minWidth:88 }}>{lv.name}</span>
+<div style={{ flex:1, background:”#1e2540”, borderRadius:4, height:6, overflow:“hidden” }}>
+<div style={{ height:“100%”, width:`${pct||0}%`, background:`linear-gradient(90deg,${lv.color},#818cf8)`, transition:“width 0.5s”, borderRadius:4 }} />
+</div>
+<span style={{ fontSize:“0.68rem”, color:”#9ca3af”, minWidth:54, textAlign:“right”, fontFamily:“monospace” }}>
+{tot > 0 ? `${pct}% (${s.correct}/${tot})` : “未挑戦”}
+</span>
+</div>
+);
+})}
+</div>
+);
+}
+
+// ─────────────────────────────────────────────
+//  SELECT SCREEN
+// ─────────────────────────────────────────────
+function SelectScreen({ onStart, stats }) {
+const [sel, setSel] = useState(null);
+const lv = LEVELS.find(l => l.id === sel);
+const totalCorrect = Object.values(stats).reduce((a,s)=>a+s.correct,0);
+const totalWrong   = Object.values(stats).reduce((a,s)=>a+s.wrong,0);
+const totalAns     = totalCorrect + totalWrong;
+
+return (
+<div style={{ minHeight:“100vh”, background:”#0e1117”, color:”#f0f0f0”, fontFamily:”‘Hiragino Kaku Gothic ProN’,‘Noto Sans JP’,sans-serif” }}>
+{/* header */}
+<header style={{ background:”#161b27”, borderBottom:“1px solid #2a3040”, padding:“0.85rem 1.4rem”, display:“flex”, justifyContent:“space-between”, alignItems:“center” }}>
+<div style={{ fontSize:“1.1rem”, fontWeight:700, background:“linear-gradient(135deg,#818cf8,#f59e0b)”, WebkitBackgroundClip:“text”, WebkitTextFillColor:“transparent” }}>
+✦ 算数・数学ドリル
+</div>
+<div style={{ display:“flex”, gap:“1rem”, fontSize:“0.78rem”, fontFamily:“monospace” }}>
+<span>⭕ <b style={{color:”#4ade80”}}>{totalCorrect}</b></span>
+<span>❌ <b style={{color:”#f87171”}}>{totalWrong}</b></span>
+{totalAns > 0 && <span style={{color:”#9ca3af”}}>{Math.round(totalCorrect/totalAns*100)}%</span>}
+</div>
+</header>
+
+```
+  <div style={{ maxWidth:520, margin:"0 auto", padding:"1.6rem 1.2rem", display:"flex", flexDirection:"column", gap:"1.1rem" }}>
+    <div style={{ textAlign:"center" }}>
+      <div style={{ fontSize:"2.4rem", marginBottom:"0.4rem" }}>📚</div>
+      <h1 style={{ fontSize:"1.5rem", fontWeight:700, marginBottom:"0.3rem" }}>難易度を選んでスタート</h1>
+      <p style={{ color:"#6b7280", fontSize:"0.8rem" }}>各レベル100問のプールからランダムに5問・手書き計算メモ付き</p>
+    </div>
+
+    {/* level cards */}
+    <div style={{ display:"flex", flexDirection:"column", gap:"0.55rem" }}>
+      {LEVELS.map(lv => {
+        const s   = stats[lv.id] || { correct:0, wrong:0 };
+        const tot = s.correct + s.wrong;
+        const pct = tot > 0 ? Math.round(s.correct/tot*100) : null;
+        return (
+          <div key={lv.id} onClick={() => setSel(lv.id)}
+            style={{ background: sel===lv.id ? lv.bg : "#161b27", border:`2px solid ${sel===lv.id ? lv.color : "#2a3040"}`, borderRadius:12, padding:"0.85rem 1.1rem", cursor:"pointer", display:"flex", alignItems:"center", gap:"0.85rem", transition:"all 0.15s", boxShadow: sel===lv.id ? `0 0 0 3px ${lv.border}` : "none" }}>
+            <span style={{ fontSize:"1.5rem" }}>{lv.icon}</span>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+                <span style={{ fontFamily:"monospace", fontWeight:700, fontSize:"0.75rem", color:lv.color, background:lv.bg, border:`1px solid ${lv.border}`, borderRadius:5, padding:"0.1rem 0.45rem" }}>{lv.label}</span>
+                <span style={{ fontWeight:700, fontSize:"0.9rem" }}>{lv.name}</span>
+              </div>
+              {tot > 0 && (
+                <div style={{ marginTop:"0.3rem", display:"flex", alignItems:"center", gap:"0.4rem" }}>
+                  <div style={{ flex:1, background:"#1e2540", borderRadius:3, height:4 }}>
+                    <div style={{ height:"100%", width:`${pct}%`, background:lv.color, borderRadius:3 }} />
+                  </div>
+                  <span style={{ fontSize:"0.65rem", color:"#6b7280", fontFamily:"monospace" }}>{pct}% ({s.correct}/{tot}問)</span>
+                </div>
+              )}
+              {tot === 0 && <div style={{ fontSize:"0.65rem", color:"#4b5563", marginTop:"0.2rem" }}>未挑戦</div>}
+            </div>
+            {sel===lv.id && <span style={{ color:lv.color, fontSize:"1.1rem" }}>✓</span>}
+          </div>
+        );
+      })}
+    </div>
+
+    {/* 成績 */}
+    {totalAns > 0 && <StatsBar stats={stats} />}
+
+    <button disabled={!sel} onClick={() => onStart(sel)}
+      style={{ padding:"1rem", border:"none", borderRadius:12, background: sel ? `linear-gradient(135deg,${lv?.color||"#818cf8"},#6366f1)` : "#1e2540", color: sel ? "#fff" : "#4b5563", fontSize:"0.98rem", fontWeight:700, cursor: sel?"pointer":"not-allowed", boxShadow: sel?"0 4px 20px rgba(129,140,248,0.3)":"none", transition:"all 0.2s" }}>
+      {sel ? `${lv?.label} ${lv?.name} をスタート →` : "難易度を選んでください"}
+    </button>
+  </div>
+</div>
+```
+
+);
+}
+
+// ─────────────────────────────────────────────
+//  QUIZ SCREEN
+// ─────────────────────────────────────────────
+function QuizScreen({ questions, level, onFinish, onAnswer }) {
+const [current,  setCurrent]  = useState(0);
+const [selected, setSelected] = useState(null);
+const [results,  setResults]  = useState([]);
+const [showEx,   setShowEx]   = useState(false);
+const lv = LEVELS.find(l => l.id === level);
+const q  = questions[current];
+const total    = questions.length;
+const answered = selected !== null;
+
+const handleChoice = (idx) => {
+if (answered) return;
+setSelected(idx);
+setShowEx(true);
+onAnswer(idx === q.a);
+};
+
+const handleNext = () => {
+const r = { question:q.q, choices:q.c, answerIdx:q.a, userIdx:selected, correct:selected===q.a, explanation:q.ex };
+const nr = […results, r];
+if (current + 1 >= total) { onFinish(nr); }
+else { setResults(nr); setCurrent(c=>c+1); setSelected(null); setShowEx(false); }
+};
+
+const btnStyle = (i) => {
+const base = { border:“1.5px solid”, borderRadius:10, padding:“0.75rem 1rem”, display:“flex”, alignItems:“center”, gap:“0.75rem”, cursor: answered?“default”:“pointer”, textAlign:“left”, width:“100%”, color:”#f0f0f0”, transition:“all 0.18s”, background:“transparent” };
+if (!answered) return { …base, borderColor:”#2a3040”, background:”#161b27” };
+if (i === q.a)      return { …base, borderColor:”#4ade80”, background:“rgba(74,222,128,0.08)” };
+if (i === selected) return { …base, borderColor:”#f87171”, background:“rgba(248,113,113,0.08)” };
+return { …base, borderColor:”#1e2540”, background:”#0e1117” };
+};
+const lblStyle = (i) => {
+if (!answered) return { background:”#1e2540”, color:”#6b7280” };
+if (i === q.a)      return { background:”#4ade80”, color:”#000” };
+if (i === selected) return { background:”#f87171”, color:”#000” };
+return { background:”#1e2540”, color:”#374151” };
+};
+
+return (
+<div style={{ minHeight:“100vh”, background:”#0e1117”, color:”#f0f0f0”, fontFamily:”‘Hiragino Kaku Gothic ProN’,‘Noto Sans JP’,sans-serif” }}>
+{/* header */}
+<header style={{ background:”#161b27”, borderBottom:“1px solid #2a3040”, padding:“0.7rem 1.4rem”, display:“flex”, justifyContent:“space-between”, alignItems:“center” }}>
+<div style={{ fontSize:“0.95rem”, fontWeight:700, background:“linear-gradient(135deg,#818cf8,#f59e0b)”, WebkitBackgroundClip:“text”, WebkitTextFillColor:“transparent” }}>✦ 算数・数学ドリル</div>
+<div style={{ display:“flex”, alignItems:“center”, gap:“0.7rem” }}>
+<span style={{ fontFamily:“monospace”, fontSize:“0.7rem”, color:lv.color, background:lv.bg, border:`1px solid ${lv.border}`, borderRadius:5, padding:“0.12rem 0.45rem” }}>{lv.label}</span>
+<span style={{ fontFamily:“monospace”, fontSize:“0.82rem”, color:”#818cf8”, fontWeight:700 }}>{current+1} / {total}</span>
+</div>
+</header>
+{/* progress */}
+<div style={{ height:3, background:”#1e2540” }}>
+<div style={{ height:“100%”, width:`${(current/total)*100}%`, background:`linear-gradient(90deg,${lv.color},#818cf8)`, transition:“width 0.4s” }} />
+</div>
+
+```
+  <div style={{ maxWidth:620, margin:"0 auto", padding:"1.1rem 1.1rem", display:"flex", flexDirection:"column", gap:"0.85rem" }}>
+    {/* question */}
+    <div style={{ background:"#161b27", border:"1px solid #2a3040", borderRadius:14, padding:"1.3rem", position:"relative", overflow:"hidden" }}>
+      <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg,${lv.color},#818cf8)` }} />
+      <div style={{ fontSize:"0.68rem", color:"#4b5563", fontFamily:"monospace", marginBottom:"0.5rem" }}>No.{q.id} · {lv.name}</div>
+      <div style={{ fontSize:"1.08rem", fontWeight:700, lineHeight:1.9 }}>{q.q}</div>
+    </div>
+
+    {/* canvas */}
+    <DrawingCanvas />
+
+    {/* choices */}
+    <div style={{ display:"flex", flexDirection:"column", gap:"0.48rem" }}>
+      {q.c.map((choice, i) => (
+        <button key={i} onClick={() => handleChoice(i)} disabled={answered} style={btnStyle(i)}>
+          <span style={{ minWidth:24, height:24, borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"monospace", fontSize:"0.7rem", fontWeight:700, flexShrink:0, ...lblStyle(i) }}>
+            {LABELS[i]}
+          </span>
+          <span style={{ fontSize:"0.9rem", lineHeight:1.55 }}>{choice}</span>
+          {answered && i===q.a   && <span style={{ marginLeft:"auto", color:"#4ade80", fontSize:"0.9rem" }}>✓</span>}
+          {answered && i===selected && i!==q.a && <span style={{ marginLeft:"auto", color:"#f87171", fontSize:"0.9rem" }}>✗</span>}
+        </button>
+      ))}
+    </div>
+
+    {/* explanation */}
+    {showEx && (
+      <div style={{ background: selected===q.a ? "rgba(74,222,128,0.06)" : "rgba(248,113,113,0.06)", border:`1px solid ${selected===q.a?"rgba(74,222,128,0.25)":"rgba(248,113,113,0.25)"}`, borderRadius:12, padding:"1rem 1.1rem" }}>
+        <div style={{ fontWeight:700, marginBottom:"0.5rem", fontSize:"0.92rem", color: selected===q.a?"#4ade80":"#f87171" }}>
+          {selected===q.a ? "⭕ 正解！すばらしい！" : `❌ 不正解… 正解は ${LABELS[q.a]}「${q.c[q.a]}」`}
+        </div>
+        <div style={{ fontSize:"0.85rem", lineHeight:2.0, color:"#d1d5db", borderTop:"1px solid rgba(255,255,255,0.06)", paddingTop:"0.6rem" }}>
+          <span style={{ color:"#818cf8", fontWeight:700, marginRight:"0.4rem" }}>💡 解説</span>
+          {q.ex}
+        </div>
+      </div>
+    )}
+
+    {answered && (
+      <button onClick={handleNext}
+        style={{ padding:"0.85rem", background:"#161b27", border:"1.5px solid #2a3040", borderRadius:10, color:"#f0f0f0", fontSize:"0.95rem", fontWeight:700, cursor:"pointer" }}>
+        {current+1 < total ? "次の問題へ →" : "結果を見る →"}
+      </button>
+    )}
+  </div>
+</div>
+```
+
+);
+}
+
+// ─────────────────────────────────────────────
+//  RESULT SCREEN
+// ─────────────────────────────────────────────
+function ResultScreen({ results, level, onRetry, onBack }) {
+const score = results.filter(r => r.correct).length;
+const total = results.length;
+const pct   = score / total;
+const lv    = LEVELS.find(l => l.id === level);
+const emoji = pct===1?“🏆”:pct>=0.8?“🎉”:pct>=0.6?“👍”:“💪”;
+const msg   = pct===1?“全問正解！完璧です！”:pct>=0.8?“とても良い出来です！”:pct>=0.6?“まずまず。復習してみよう！”:“もう一度挑戦しよう！”;
+
+return (
+<div style={{ minHeight:“100vh”, background:”#0e1117”, color:”#f0f0f0”, fontFamily:”‘Hiragino Kaku Gothic ProN’,‘Noto Sans JP’,sans-serif” }}>
+<header style={{ background:”#161b27”, borderBottom:“1px solid #2a3040”, padding:“0.8rem 1.4rem” }}>
+<div style={{ fontSize:“1rem”, fontWeight:700, background:“linear-gradient(135deg,#818cf8,#f59e0b)”, WebkitBackgroundClip:“text”, WebkitTextFillColor:“transparent” }}>✦ 算数・数学ドリル</div>
+</header>
+
+```
+  <div style={{ maxWidth:620, margin:"0 auto", padding:"1.8rem 1.1rem", display:"flex", flexDirection:"column", gap:"1.2rem" }}>
+    {/* score */}
+    <div style={{ textAlign:"center" }}>
+      <div style={{ fontSize:"2.5rem" }}>{emoji}</div>
+      <div style={{ fontSize:"3.4rem", fontWeight:700, background:`linear-gradient(135deg,${lv.color},#818cf8)`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", lineHeight:1.1 }}>{score}/{total}</div>
+      <div style={{ marginTop:"0.5rem", display:"flex", justifyContent:"center", alignItems:"center", gap:"0.5rem" }}>
+        <span style={{ fontFamily:"monospace", fontSize:"0.72rem", color:lv.color, background:lv.bg, border:`1px solid ${lv.border}`, borderRadius:5, padding:"0.12rem 0.45rem" }}>{lv.label} {lv.name}</span>
+        <span style={{ color:"#9ca3af", fontSize:"0.85rem" }}>{msg}</span>
+      </div>
+    </div>
+
+    {/* review */}
+    <div style={{ background:"#161b27", border:"1px solid #2a3040", borderRadius:12, overflow:"hidden" }}>
+      {results.map((r, i) => (
+        <div key={i} style={{ borderBottom: i<results.length-1?"1px solid #1e2540":"none" }}>
+          {/* row */}
+          <div style={{ display:"flex", gap:"0.7rem", padding:"0.85rem 1rem", alignItems:"flex-start" }}>
+            <span style={{ fontFamily:"monospace", fontSize:"0.65rem", color:"#4b5563", minWidth:28, paddingTop:2 }}>問{i+1}</span>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:"0.82rem", lineHeight:1.6, marginBottom:"0.2rem" }}>{r.question}</div>
+              {r.correct
+                ? <div style={{ fontSize:"0.7rem", color:"#4ade80" }}>✓ 正解：{LABELS[r.answerIdx]}「{r.choices[r.answerIdx]}」</div>
+                : <div style={{ fontSize:"0.7rem", color:"#f87171" }}>✗ あなた：{LABELS[r.userIdx]}「{r.choices[r.userIdx]}」　正解：{LABELS[r.answerIdx]}「{r.choices[r.answerIdx]}」</div>
+              }
+              {/* always show explanation */}
+              <div style={{ marginTop:"0.4rem", fontSize:"0.75rem", lineHeight:1.85, color:"#9ca3af", background:"rgba(129,140,248,0.05)", borderRadius:6, padding:"0.5rem 0.65rem", borderLeft:`2px solid ${lv.color}` }}>
+                <span style={{ color:"#818cf8", fontWeight:700, marginRight:"0.3rem" }}>💡</span>{r.explanation}
+              </div>
+            </div>
+            <span style={{ fontSize:"1rem", flexShrink:0 }}>{r.correct?"⭕":"❌"}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <button onClick={onRetry}
+      style={{ padding:"0.95rem", background:`linear-gradient(135deg,${lv.color},#6366f1)`, border:"none", borderRadius:10, color:"#fff", fontSize:"0.98rem", fontWeight:700, cursor:"pointer", boxShadow:"0 4px 16px rgba(129,140,248,0.3)" }}>
+      🔁 同じレベルでもう一度
+    </button>
+    <button onClick={onBack}
+      style={{ padding:"0.88rem", background:"transparent", border:"1.5px solid #2a3040", borderRadius:10, color:"#9ca3af", fontSize:"0.88rem", cursor:"pointer" }}>
+      ← レベル選択に戻る
+    </button>
+  </div>
+</div>
+```
+
+);
+}
+
+// ─────────────────────────────────────────────
+//  APP  （localStorage で成績を永続化）
+// ─────────────────────────────────────────────
+const STORAGE_KEY = “math_drill_stats_v1”;
+
+function loadStats() {
+try {
+const raw = localStorage.getItem(STORAGE_KEY);
+return raw ? JSON.parse(raw) : {};
+} catch (_) { return {}; }
+}
+
+function saveStats(stats) {
+try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)); } catch (_) {}
+}
+
+function App() {
+const [screen,    setScreen]    = useState(“select”);
+const [level,     setLevel]     = useState(null);
+const [questions, setQuestions] = useState([]);
+const [results,   setResults]   = useState([]);
+const [stats,     setStats]     = useState(() => loadStats());
+
+// stats が変わるたびに localStorage へ保存
+useEffect(() => { saveStats(stats); }, [stats]);
+
+const handleStart = useCallback((lv) => {
+setLevel(lv);
+setQuestions(pickQuestions(lv, 5));
+setScreen(“quiz”);
+}, []);
+
+const handleRetry = useCallback(() => {
+setQuestions(pickQuestions(level, 5));
+setScreen(“quiz”);
+}, [level]);
+
+// 1問ごとに即時反映
+const handleAnswer = useCallback((correct) => {
+setStats(prev => {
+const s = prev[level] || { correct:0, wrong:0 };
+const next = { …prev, [level]: { correct: s.correct + (correct?1:0), wrong: s.wrong + (correct?0:1) } };
+return next;
+});
+}, [level]);
+
+const handleFinish = useCallback((r) => {
+setResults(r);
+setScreen(“result”);
+}, []);
+
+if (screen === “select”) return <SelectScreen onStart={handleStart} stats={stats} />;
+if (screen === “quiz”)   return <QuizScreen   questions={questions} level={level} onFinish={handleFinish} onAnswer={handleAnswer} />;
+if (screen === “result”) return <ResultScreen results={results} level={level} onRetry={handleRetry} onBack={() => setScreen(“select”)} />;
+}
+
+const root = ReactDOM.createRoot(document.getElementById(‘root’));
+root.render(<App />);
+</script>
+
+</body>
+</html>
